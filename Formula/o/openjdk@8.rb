@@ -33,6 +33,20 @@ class OpenjdkAT8 < Formula
   uses_from_macos "unzip"
   uses_from_macos "zip"
 
+  on_macos do
+    if DevelopmentTools.clang_build_version == 1600
+      depends_on "llvm" => :build
+
+      fails_with :clang do
+        cause <<~EOS
+          Exception in thread "main" java.lang.ClassFormatError: StackMapTable format error: bad verification type
+            at jdk.compiler/com.sun.tools.javac.Main.compile(Main.java:64)
+            at jdk.compiler/com.sun.tools.javac.Main.main(Main.java:52)
+        EOS
+      end
+    end
+  end
+
   on_monterey :or_newer do
     depends_on "gawk" => :build
   end
@@ -74,6 +88,12 @@ class OpenjdkAT8 < Formula
   patch :p0, :DATA
 
   def install
+    if DevelopmentTools.clang_build_version == 1600
+      ENV.llvm_clang
+      # Prevent linkage with LLVM libunwind.
+      ENV.remove "HOMEBREW_LIBRARY_PATHS", Formula["llvm"].opt_lib
+    end
+
     _, _, update = version.to_s.rpartition("-")
     boot_jdk = buildpath/"boot-jdk"
     resource("boot-jdk").stage boot_jdk
